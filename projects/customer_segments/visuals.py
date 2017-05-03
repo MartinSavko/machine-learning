@@ -14,6 +14,8 @@ import matplotlib.cm as cm
 import pandas as pd
 import numpy as np
 
+import seaborn as sns
+sns.set_color_codes()
 def pca_results(good_data, pca):
 	'''
 	Create a DataFrame of the PCA results
@@ -34,7 +36,7 @@ def pca_results(good_data, pca):
 	variance_ratios.index = dimensions
 
 	# Create a bar plot visualization
-	fig, ax = plt.subplots(figsize = (14,8))
+	fig, ax = plt.subplots(figsize=(16, 9))
 
 	# Plot the feature weights as a function of the components
 	components.plot(ax = ax, kind = 'bar');
@@ -59,10 +61,10 @@ def cluster_results(reduced_data, preds, centers, pca_samples):
 	plot_data = pd.concat([predictions, reduced_data], axis = 1)
 
 	# Generate the cluster plot
-	fig, ax = plt.subplots(figsize = (14,8))
+	fig, ax = plt.subplots(figsize=(16, 9))
 
 	# Color map
-	cmap = cm.get_cmap('gist_rainbow')
+	cmap = cm.get_cmap('Set2')
 
 	# Color the points based on assigned cluster
 	for i, cluster in plot_data.groupby('Cluster'):   
@@ -99,7 +101,7 @@ def biplot(good_data, reduced_data, pca):
     https://github.com/teddyroland/python-biplot
     '''
 
-    fig, ax = plt.subplots(figsize = (14,8))
+    fig, ax = plt.subplots(figsize=(16, 9))
     # scatterplot of the reduced data    
     ax.scatter(x=reduced_data.loc[:, 'Dimension 1'], y=reduced_data.loc[:, 'Dimension 2'], 
         facecolors='b', edgecolors='b', s=70, alpha=0.5)
@@ -141,10 +143,10 @@ def channel_results(reduced_data, outliers, pca_samples):
 	labeled = pd.concat([reduced_data, channel], axis = 1)
 	
 	# Generate the cluster plot
-	fig, ax = plt.subplots(figsize = (14,8))
+	fig, ax = plt.subplots(figsize=(16, 9))
 
 	# Color map
-	cmap = cm.get_cmap('gist_rainbow')
+	cmap = cm.get_cmap('Set2')
 
 	# Color the points based on assigned Channel
 	labels = ['Hotel/Restaurant/Cafe', 'Retailer']
