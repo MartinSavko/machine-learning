@@ -77,7 +77,6 @@ class LearningAgent(Agent):
         waypoint = self.planner.next_waypoint() # The next waypoint 
         inputs = self.env.sense(self)           # Visual input - intersection light and traffic
         deadline = self.env.get_deadline(self)  # Remaining deadline
-
         ########### 
         ## TO DO ##
         ###########
@@ -102,6 +101,14 @@ class LearningAgent(Agent):
                 maxQ = self.Q[state][action]
             elif self.Q[state][action] > maxQ:
                 maxQ = self.Q[state][action]
+
+#        actions = self.Q[state]
+#        max_action = actions.pop()
+#        maxQ = self.Q[state][action]
+#        for action in actions:
+#            candidate = self.Q[state][action]
+#            if candidate > maxQ:
+#               maxQ = candidate
         return maxQ 
 
 
@@ -146,6 +153,18 @@ class LearningAgent(Agent):
             for action in self.Q[state].keys():
                 if self.Q[state][action] == maxQ:
                     return action
+        #if random.random() <= self.epsilon:
+        #   max_action = random.choice(self.valid_actions)
+        #else:
+        #   actions = self.Q[state].keys()
+        #   max_action = actions.pop()
+        #   max_val = self.Q[state][max_action]
+        #   
+        #   for action in actions:
+        #       if self.Q[state][action] > max_val:
+        #          max_action = action
+        #
+        #return max_action
 
 
     def learn(self, state, action, reward):
@@ -263,6 +282,7 @@ def get_Q_from_laws():
                                 if right == 'righ':
                                     Q[state] = {'none': 10}
             state = waypoint, inputs['light'], inputs['left'], inputs['right'], inputs['oncoming']
+
 if __name__ == '__main__':
     for epsilon_method in ['linear', 'exponential', 'geometric', 'logarithmic']:
         for factor in [0.001, 0.002, 0.005, 0.01, 0.05, 0.1]:
