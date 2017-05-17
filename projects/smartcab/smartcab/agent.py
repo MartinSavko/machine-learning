@@ -3,12 +3,13 @@ import math
 from environment import Agent, Environment
 from planner import RoutePlanner
 from simulator import Simulator
+import random
 
 class LearningAgent(Agent):
     """ An agent that learns to drive in the Smartcab world.
         This is the object you will be modifying. """ 
 
-    def __init__(self, env, learning=False, epsilon=1.0, alpha=0.5):
+    def __init__(self, env, learning=False, epsilon=1.0, alpha=0.5, epsilon_method='linear', factor=0.002, learn_then_fly=False):
         super(LearningAgent, self).__init__(env)     # Set the agent in the evironment 
         self.planner = RoutePlanner(self.env, self)  # Create a route planner
         self.valid_actions = self.env.valid_actions  # The set of valid actions
@@ -23,8 +24,31 @@ class LearningAgent(Agent):
         ## TO DO ##
         ###########
         # Set any additional class parameters as needed
-
-
+        self.epsilon_method = epsilon_method
+        self.factor = factor
+        self.t = 0 # time step
+        self.learn_then_fly = learn_then_fly
+        
+    def epsilon_update(self):
+        if self.learn_then_fly == True:
+            if self.t < self.n_train/2:
+                return
+        if self.epsilon_method == 'linear':
+            self.epsilon -= self.factor
+        if self.epsilon_method == 'exponential':
+            self.epsilon *= self.factor
+        if self.epsilon_method == 'logarithmic':
+            self.epsilon == self.factor ** self.t
+        if self.epsilon_method == 'geometric':
+            self.epsilon = self.factor**self.t
+            
+                
+    def linear_epsilon_update(self, decrement=0.002):
+        if self.epsilon > 0:
+            self.epsilon -= decrement
+        else:
+            self.epsilon = 0
+            
     def reset(self, destination=None, testing=False):
         """ The reset function is called at the beginning of each trial.
             'testing' is set to True if testing trials are being used
@@ -39,7 +63,9 @@ class LearningAgent(Agent):
         # Update epsilon using a decay function of your choice
         # Update additional class parameters as needed
         # If 'testing' is True, set epsilon and alpha to 0
-
+        self.t += 1
+        self.epsilon_update()
+        
         return None
 
     def build_state(self):
@@ -56,13 +82,13 @@ class LearningAgent(Agent):
         ## TO DO ##
         ###########
         # Set 'state' as a tuple of relevant data for the agent        
-        state = None
+        state = waypoint, inputs['light'], inputs['left'], inputs['right'], inputs['oncoming']
 
         return state
 
 
     def get_maxQ(self, state):
-        """ The get_max_Q function is called when the agent is asked to find the
+        """ The get_maxQ function is called when the agent is asked to find the
             maximum Q-value of all actions based on the 'state' the smartcab is in. """
 
         ########### 
@@ -71,7 +97,11 @@ class LearningAgent(Agent):
         # Calculate the maximum Q-value of all actions for a given state
 
         maxQ = None
-
+        for action in self.Q[state]:
+            if maxQ == None:
+                maxQ = self.Q[state][action]
+            elif self.Q[state][action] > maxQ:
+                maxQ = self.Q[state][action]
         return maxQ 
 
 
@@ -84,7 +114,12 @@ class LearningAgent(Agent):
         # When learning, check if the 'state' is not in the Q-table
         # If it is not, create a new dictionary for that state
         #   Then, for each action available, set the initial Q-value to 0.0
-
+        if state not in self.Q:
+            actions_q_values = {}
+            for action in self.valid_actions:
+                actions_q_values[action] = 0
+            self.Q[state] = actions_q_values
+        
         return
 
 
@@ -103,8 +138,14 @@ class LearningAgent(Agent):
         # When not learning, choose a random action
         # When learning, choose a random action with 'epsilon' probability
         #   Otherwise, choose an action with the highest Q-value for the current state
- 
-        return action
+        
+        if random.random < self.epsilon:
+            return random.choice(self.valid_actions)
+        else:
+            maxQ = self.get_maxQ(state)
+            for action in self.Q[state].keys():
+                if self.Q[state][action] == maxQ:
+                    return action
 
 
     def learn(self, state, action, reward):
@@ -117,7 +158,7 @@ class LearningAgent(Agent):
         ###########
         # When learning, implement the value iteration update rule
         #   Use only the learning rate 'alpha' (do not use the discount factor 'gamma')
-
+        self.Q[state][action] += self.alpha * (reward - self.Q[state][action])
         return
 
 
@@ -135,7 +176,7 @@ class LearningAgent(Agent):
         return
         
 
-def run():
+def run(n_test=10, n_train=1000, epsilon_method='linear', factor=0.002, alpha=0.5, learn_then_fly=False):
     """ Driving function for running the simulation. 
         Press ESC to close the simulation, or [SPACE] to pause the simulation. """
 
@@ -153,13 +194,13 @@ def run():
     #   learning   - set to True to force the driving agent to use Q-learning
     #    * epsilon - continuous value for the exploration factor, default is 1
     #    * alpha   - continuous value for the learning rate, default is 0.5
-    agent = env.create_agent(LearningAgent)
+    agent = env.create_agent(LearningAgent, learning=True, alpha=alpha, epsilon_method=epsilon_method, factor=factor, learn_then_fly=learn_then_fly)
     
     ##############
     # Follow the driving agent
     # Flags:
     #   enforce_deadline - set to True to enforce a deadline metric
-    env.set_primary_agent(agent)
+    env.set_primary_agent(agent, enforce_deadline=True)
 
     ##############
     # Create the simulation
@@ -168,15 +209,63 @@ def run():
     #   display      - set to False to disable the GUI if PyGame is enabled
     #   log_metrics  - set to True to log trial and simulation results to /logs
     #   optimized    - set to True to change the default log file name
-    sim = Simulator(env)
+    sim = Simulator(env, update_delay=0, display=False, optimized=True, log_metrics=True, n_test=n_test, n_train=n_train, epsilon_method='%s_%6.3f_%d' % (epsilon_method, factor, learn_then_fly), alpha=alpha)
     
     ##############
     # Run the simulator
     # Flags:
     #   tolerance  - epsilon tolerance before beginning testing, default is 0.05 
     #   n_test     - discrete number of testing trials to perform, default is 0
-    sim.run()
+    sim.run(n_test=n_test, n_train=n_train)
 
+# what are the parameters to test?
+# learning method: 
+#    epsilon evolution -- fraction of random steps
+#        linear
+#        exponential decline
+#        geometric decline
+#    alpha -- how much we remember
+#       linspace(0, 1, 10)
+#    n_train -- how long we train
+#    n_test -- how many tests we perform
 
+# Create Q dictionary based on traffic laws
+'''
+if there is red light the action is none
+if there is green light
+    if the waypoint is forward
+        if the 'right' is none
+            the action is forward
+        if the 'right' is right
+            the action is none
+    if the waypoint is left
+        if the 'oncoming' is none
+            the action is left
+        if the 'oncoming' is oncoming
+            the action is none
+    if the waypoint is right
+        the action is right
+'''
+def get_Q_from_laws():
+    Q = {}
+    for waypoint in ('forward', 'left', 'right'):
+        for light in ('red', 'green'):
+            for left in ('left', 'none'):
+                for right in ('right', 'none'):
+                    for oncoming in ('oncoming', 'none'):
+                        state = (waypoint, light, left, right, oncoming)
+                        if light == 'red':
+                            Q[state] = {'none': 10}
+                        else:
+                            if waypoint == 'forward':
+                                if right == 'none':
+                                    Q[state] = {'forward': 10}
+                                if right == 'righ':
+                                    Q[state] = {'none': 10}
+            state = waypoint, inputs['light'], inputs['left'], inputs['right'], inputs['oncoming']
 if __name__ == '__main__':
-    run()
+    for epsilon_method in ['linear', 'exponential', 'geometric', 'logarithmic']:
+        for factor in [0.001, 0.002, 0.005, 0.01, 0.05, 0.1]:
+            for n_test in [10, 20, 50, 100]:
+                run(n_test=n_test, n_train=1000, epsilon_method=epsilon_method, factor=factor, learn_then_fly=False)
+                
